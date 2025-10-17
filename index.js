@@ -51,7 +51,9 @@ if (!USE_WEBHOOK && client) {
 
 function buildPrompt(contextLines = []) {
   const ctx = contextLines.length ? `Context:\n- ${contextLines.join('\n- ')}\n` : '';
-  return `\nYou are a friendly CTO sending a single short motivational quote to a small dev team shipping products in Myanmar.\n${ctx}Requirements:\n- 1–2 sentences MAX, punchy.\n- Focus on engineering momentum, code quality, learning, teamwork, shipping.\n- Avoid clichés; be concrete.\n- If LANGUAGE=EN -> English only.\n- If LANGUAGE=MM -> Myanmar (Burmese) only.\n- If LANGUAGE=EN_MM -> Give English line then Myanmar line on the next line.\n\nReturn ONLY the quote text. No extra commentary.`;
+  return `
+Write one short morning motivation quote for a small dev team in Myanmar that ships real products. Do not assign tasks or mention deadlines. Keep it to 1–2 punchy sentences. Emphasize skill growth, code quality, learning together, craftsmanship, and resilience. Avoid clichés, fluff, emojis, and hashtags. English only. Return ONLY the quote text. Preferred tone: “Code with purpose. Ship with pride. Grow together.”
+`
 }
 
 async function generateQuote(contextLines = []) {
@@ -60,7 +62,7 @@ async function generateQuote(contextLines = []) {
 
     const endpoint = AI_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
     const model = AI_MODEL || 'qwen/qwen3-coder:free';
-    const maxTokens = Number(AI_MAX_TOKENS ?? '') || 120;
+    const maxTokens = Number(AI_MAX_TOKENS ?? '') || 100;
     const temperature = Number(AI_TEMPERATURE ?? '') || 0.8;
     const headers = {
       'Authorization': `Bearer ${AI_API_KEY}`,
@@ -110,8 +112,8 @@ async function fetchClickUpContext() {
   const { CLICKUP_TOKEN, CLICKUP_TEAM_ID } = process.env;
   if (!CLICKUP_TOKEN || !CLICKUP_TEAM_ID) return [];
   try {
-    const since = Date.now() - 24 * 60 * 60 * 1000;
-    const url = `https://api.clickup.com/api/v2/team/${CLICKUP_TEAM_ID}/task?date_updated_gt=${since}&include_closed=true`;
+    const since = Date.now() - 24 * 60 * 60 * 1000; // Start of today
+    const url = `https://api.clickup.com/api/v2/team/${CLICKUP_TEAM_ID}/task`;
     const res = await fetch(url, { headers: { Authorization: CLICKUP_TOKEN } });
     const data = await res.json();
     const tasks = (data.tasks || []).slice(0, 5);
@@ -127,8 +129,12 @@ async function fetchClickUpContext() {
 }
 
 async function postDailyQuote() {
-  const ctx = await fetchClickUpContext();
-  const quote = await generateQuote(ctx);
+  // const ctx = await fetchClickUpContext();
+  // console.log('ClickUp context:', ctx);
+
+  const quote = await generateQuote("");
+  console.log('Generated quote:', quote);
+
   const fallbacksEN = [
     'Small commits, big momentum. Ship something today.',
     'Readability is a feature. Future you will thank present you.'
@@ -143,7 +149,7 @@ async function postDailyQuote() {
     else if (LANGUAGE === 'EN_MM') text = `${fallbacksEN[0]}\n${fallbacksMM[0]}`;
     else text = fallbacksEN[0];
   }
-  const payloadText = `🌞 **Daily Dev Motivation**\n${text}`;
+  const payloadText = `🌅 **Morning Dev Spark**\n${text}`;
   if (USE_WEBHOOK) {
     try {
       await fetch(DISCORD_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: payloadText }) });
