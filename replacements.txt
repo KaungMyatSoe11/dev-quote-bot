@@ -1,0 +1,2 @@
+# Replace exact token everywhere (put your OLD leaked token here)
+OLD_DISCORD_TOKEN==>REDACTED
